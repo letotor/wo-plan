@@ -1,4 +1,4 @@
-export default defineRouteMiddleware((to) => {
+export default defineRouteMiddleware((to, from) => {
     // Routes publiques qui ne nécessitent pas d'authentification
     const publicRoutes = ['/login', '/']
 
@@ -8,10 +8,10 @@ export default defineRouteMiddleware((to) => {
     }
 
     // Vérifier si l'utilisateur a un cookie de session valide
-    const cookies = useCookie('wo_session')
+    const woSession = useCookie('wo_session')
 
     // Si pas de cookie et route protégée, rediriger vers login
-    if (!cookies.value) {
+    if (!woSession.value) {
         return navigateTo('/login')
     }
 })
