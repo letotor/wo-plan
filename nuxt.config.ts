@@ -1,12 +1,15 @@
 export default defineNuxtConfig({
-ssr: true,
- vite: {
-  ssr: {
-    noExternal: ['ag-grid-community', 'ag-grid-vue3']
-  }
-},
+  ssr: false,
   css: ['~/assets/css/main.css'],
   nitro: {
     preset: 'netlify'
+  },
+  build: {
+    transpile: ['ag-grid-community', 'ag-grid-vue3']
+  },
+  vite: {
+    ssr: {
+      external: ['ag-grid-community', 'ag-grid-vue3']
+    }
   }
 })
