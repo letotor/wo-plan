@@ -5,11 +5,13 @@
 [functions]
   directory = "netlify/functions"
 
+# Redirige /api/* vers les Netlify Functions
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
+# Edge function : protège /wo-plan.html par cookie de session signé
 [[edge_functions]]
-  path = "/*"
-  function = "auth"
+  path = "/wo-plan.html"
+  function = "protect"

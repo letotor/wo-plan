@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accès restreint — WO Bulk Edit</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg: #0f1620; --surface: #192232; --elevated: #1e2a3a;
+    --border: #2a3a50; --text: #c8d8e8; --muted: #6a8099;
+    --accent: #3b82f6; --danger: #ef4444;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 40px 44px; width: 360px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  .lock-icon {
+    width: 48px; height: 48px; background: var(--elevated);
+    border: 1px solid var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .title { text-align: center; }
+  .title h2 {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+  }
+  .title p { font-size: 12px; color: var(--muted); }
+  .field { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .field label {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .input-wrap { position: relative; }
+  .input-wrap input {
+    width: 100%; background: var(--elevated); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 40px 11px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    outline: none; transition: border-color .2s;
+  }
+  .input-wrap input:focus { border-color: var(--accent); }
+  .input-wrap input.shake { border-color: var(--danger); animation: shake .35s ease; }
+  .toggle-pw {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 14px; padding: 2px; line-height: 1; transition: color .15s;
+  }
+  .toggle-pw:hover { color: var(--text); }
+  .error { font-size: 11px; color: var(--danger); font-family: var(--mono); min-height: 16px; text-align: center; }
+  .btn {
+    width: 100%; background: var(--accent); border: none; border-radius: 8px;
+    padding: 12px; font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: white;
+    cursor: pointer; transition: opacity .2s, transform .1s;
+  }
+  .btn:hover { opacity: .88; }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .hint { font-size: 10px; color: var(--muted); font-family: var(--mono); text-align: center; line-height: 1.6; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-7px); }
+    60%      { transform: translateX(7px); }
+  }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="lock-icon">🔒</div>
+  <div class="title">
+    <h2>Accès restreint</h2>
+    <p>WO Bulk Edit — Plan &amp; Flow</p>
+  </div>
+  <div class="field">
+    <label>Mot de passe</label>
+    <div class="input-wrap">
+      <input id="pw" type="password" placeholder="••••••••••••"
+             autocomplete="current-password" spellcheck="false" />
+      <button class="toggle-pw" id="toggle" type="button">👁</button>
+    </div>
+  </div>
+  <div class="error" id="err"></div>
+  <button class="btn" id="btn">Déverrouiller</button>
+  <div class="hint">Authentification serveur · session 24h</div>
+</div>
+<script>
+(function () {
+  'use strict'
+  const $pw  = document.getElementById('pw')
+  const $btn = document.getElementById('btn')
+  const $err = document.getElementById('err')
+  const $tog = document.getElementById('toggle')
+
+  let attempts = 0, lockedUntil = 0
+
+  $tog.addEventListener('click', () => {
+    const hide = $pw.type === 'password'
+    $pw.type = hide ? 'text' : 'password'
+    $tog.textContent = hide ? '🙈' : '👁'
+    $pw.focus()
+  })
+
+  $btn.addEventListener('click', tryLogin)
+  $pw.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin() })
+  setTimeout(() => $pw.focus(), 80)
+
+  async function tryLogin () {
+    if (Date.now() < lockedUntil) {
+      const s = Math.ceil((lockedUntil - Date.now()) / 1000)
+      $err.textContent = `Trop de tentatives. Réessayez dans ${s}s.`
+      return
+    }
+    const pw = $pw.value.trim()
+    if (!pw) { $err.textContent = 'Veuillez saisir le mot de passe.'; return }
+
+    $btn.disabled = true
+    $btn.textContent = 'Vérification…'
+    $err.textContent = ''
+
+    try {
+      const res = await fetch('/api/auth-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw })
+      })
+
+      if (res.ok) {
+        // Cookie posé par le serveur — on redirige
+        window.location.replace('/wo-plan.html')
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
+      shake()
+      attempts++
+      $pw.value = ''
+
+      if (attempts >= 5) {
+        lockedUntil = Date.now() + 60_000
+        attempts = 0
+        $err.textContent = 'Trop de tentatives. Réessayez dans 60s.'
+      } else {
+        const left = 5 - attempts
+        $err.textContent = (data.error || 'Mot de passe incorrect') +
+          ` (${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''})`
+      }
+    } catch {
+      $err.textContent = 'Erreur réseau. Réessayez.'
+    }
+
+    $btn.disabled = false
+    $btn.textContent = 'Déverrouiller'
+    $pw.focus()
+  }
+
+  function shake () {
+    $pw.classList.remove('shake')
+    void $pw.offsetWidth
+    $pw.classList.add('shake')
+  }
+})()
+</script>
+</body>
+</html>
