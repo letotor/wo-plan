@@ -387,7 +387,9 @@
 </template>
 
 <script setup lang="ts">
-// Page de documentation WO Bulk Edit protégée par Edge Function
+definePageMeta({
+  middleware: 'auth'
+})
 </script>
 
 <style scoped>
