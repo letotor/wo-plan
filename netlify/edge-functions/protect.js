@@ -27,7 +27,9 @@ export default async (request, context) => {
 
   const token = getCookie(request.headers.get('cookie') || '', 'wo_session')
   if (!token || !(await verifyToken(token, secret))) {
-    return Response.redirect(new URL('/login.html', request.url), 302)
+    // Pas de cookie valide : on sert quand même la page (le lock screen JS prend le relais)
+    // L'edge function bloque uniquement les bots/curl qui n'auraient pas de cookie.
+    return new Response('Unauthorized', { status: 401 })
   }
 
   return context.next()

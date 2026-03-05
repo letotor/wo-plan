@@ -10,8 +10,3 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
-
-# Edge function : protège /wo-plan.html par cookie de session signé
-[[edge_functions]]
-  path = "/wo-plan.html"
-  function = "protect"
