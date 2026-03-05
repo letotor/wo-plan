@@ -24,7 +24,75 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
-  #page-content { padding: 40px 32px; }
+  /* ── LOCK SCREEN ── */
+  #lock-screen {
+    position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lock-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 40px 44px; width: 360px;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  .lock-icon {
+    width: 48px; height: 48px; background: var(--elevated);
+    border: 1px solid var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .lock-title { text-align: center; }
+  .lock-title h2 {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+  }
+  .lock-title p { font-size: 12px; color: var(--muted); }
+  .lock-field { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .lock-field label {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+  }
+  .lock-input-wrap { position: relative; }
+  .lock-input-wrap input {
+    width: 100%; background: var(--elevated); border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 40px 11px 14px;
+    font-family: var(--mono); font-size: 13px; color: var(--text);
+    outline: none; transition: border-color .2s;
+  }
+  .lock-input-wrap input:focus { border-color: var(--accent); }
+  .lock-input-wrap input.shake {
+    border-color: var(--danger);
+    animation: shake .35s ease;
+  }
+  .toggle-pw {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 14px; padding: 2px; line-height: 1; transition: color .15s;
+  }
+  .toggle-pw:hover { color: var(--text); }
+  .lock-error {
+    font-size: 11px; color: var(--danger); font-family: var(--mono);
+    min-height: 16px; text-align: center;
+  }
+  .lock-btn {
+    width: 100%; background: var(--accent); border: none; border-radius: 8px;
+    padding: 12px; font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: white;
+    cursor: pointer; transition: opacity .2s, transform .1s;
+  }
+  .lock-btn:hover { opacity: .88; }
+  .lock-btn:active { transform: scale(.98); }
+  .lock-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .lock-hint {
+    font-size: 10px; color: var(--muted); font-family: var(--mono);
+    text-align: center; line-height: 1.6;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-7px); }
+    60%      { transform: translateX(7px); }
+  }
+  /* ── PAGE CONTENT ── */
+  #page-content { display: none; padding: 40px 32px; }
+  /* ── CSS original ── */
   h1 { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
   .subtitle { font-size: 22px; font-weight: 600; color: #e2ecf6; margin-bottom: 40px; }
   .section-label { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; padding-left: 2px; }
@@ -102,6 +170,30 @@
 </style>
 </head>
 <body>
+<!-- ══════════════════════════════════════ LOCK SCREEN -->
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">
+      <h2>Accès restreint</h2>
+      <p>WO Bulk Edit — Plan & Flow</p>
+    </div>
+    <div class="lock-field">
+      <label>Mot de passe</label>
+      <div class="lock-input-wrap">
+        <input id="pw-input" type="password" placeholder="••••••••••••"
+               autocomplete="current-password" spellcheck="false" />
+        <button class="toggle-pw" id="toggle-pw" type="button">👁</button>
+      </div>
+    </div>
+    <div class="lock-error" id="lock-error"></div>
+    <button class="lock-btn" id="lock-btn">Déverrouiller</button>
+    <div class="lock-hint">
+      Vérification serveur · session 24h
+    </div>
+  </div>
+</div>
+<!-- ══════════════════════════════════════ PAGE CONTENT -->
 <div id="page-content">
 <h1>Work Orders — Bulk Edit</h1>
 <div class="subtitle">Plan d'implémentation & Flow complet</div>
@@ -255,7 +347,7 @@
 <div class="impl-grid">
   <div class="impl-card">
     <h3 style="color:#60a5fa">Phase 1 — Fondations</h3>
-    <div class="impl-item"><div class="impl-dot" style="background:#60a5fa"></div><div><div class="impl-text">Types &amp; enums <span class="tag">work-order.ts</span></div><div class="impl-note">WorkOrder, BulkEditDraft, Payload, ItemResult</div></div></div>
+    <div class="impl-item"><div class="impl-dot" style="background:#60a5fa"></div><div><div class="impl-text">Types & enums <span class="tag">work-order.ts</span></div><div class="impl-note">WorkOrder, BulkEditDraft, Payload, ItemResult</div></div></div>
     <div class="impl-item"><div class="impl-dot" style="background:#60a5fa"></div><div><div class="impl-text">Config règles <span class="tag">useWorkOrderBulkConfig.ts</span></div><div class="impl-note">BULK_EDITABLE_STATUSES, WO_BULK_STATUS_RULES</div></div></div>
     <div class="impl-item"><div class="impl-dot" style="background:#60a5fa"></div><div><div class="impl-text">Couche API <span class="tag">workOrderApi.ts</span></div><div class="impl-note">PATCH /work-orders/bulk-edit/</div></div></div>
     <div class="impl-item"><div class="impl-dot" style="background:#60a5fa"></div><div><div class="impl-text">Service <span class="tag">workOrderService.ts</span></div><div class="impl-note">buildPayload, isSelectable, resolveSharedStatus</div></div></div>
@@ -278,6 +370,114 @@
     <div class="impl-item"><div class="impl-dot" style="background:#a78bfa"></div><div><div class="impl-text">Message statuts mixtes</div><div class="impl-note">sharedStatus === null → message à la place du panneau</div></div></div>
   </div>
 </div>
-</div>
+</div><!-- /page-content -->
+<script>
+(function () {
+  'use strict'
+
+  const MAX_ATTEMPTS = 5
+  const LOCKOUT_MS   = 60_000
+
+  const $lock   = document.getElementById('lock-screen')
+  const $page   = document.getElementById('page-content')
+  const $input  = document.getElementById('pw-input')
+  const $btn    = document.getElementById('lock-btn')
+  const $error  = document.getElementById('lock-error')
+  const $toggle = document.getElementById('toggle-pw')
+
+  let attempts    = 0
+  let lockedUntil = 0
+
+  // ── 1. Vérifier la session côté serveur au chargement
+  fetch('/api/auth-check', { credentials: 'same-origin' })
+    .then(r => { if (r.ok) unlock() })
+    .catch(() => { /* pas de session — lock screen reste affiché */ })
+
+  // ── 2. Afficher / masquer le mot de passe
+  $toggle.addEventListener('click', () => {
+    const hidden = $input.type === 'password'
+    $input.type = hidden ? 'text' : 'password'
+    $toggle.textContent = hidden ? '🙈' : '👁'
+    $input.focus()
+  })
+
+  $btn.addEventListener('click', tryUnlock)
+  $input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock() })
+  setTimeout(() => $input.focus(), 100)
+
+  // ── 3. Tentative de connexion via API serverless
+  async function tryUnlock () {
+    if (Date.now() < lockedUntil) {
+      const s = Math.ceil((lockedUntil - Date.now()) / 1000)
+      setError(`Trop de tentatives. Réessayez dans ${s}s.`)
+      return
+    }
+
+    const val = $input.value
+    if (!val) { setError('Veuillez saisir le mot de passe.'); return }
+
+    $btn.disabled = true
+    $btn.textContent = 'Vérification…'
+    setError('')
+
+    try {
+      const res = await fetch('/api/auth-login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: val })
+      })
+
+      if (res.ok) {
+        // Cookie posé par le serveur — transition douce
+        $lock.style.transition = 'opacity .3s'
+        $lock.style.opacity = '0'
+        setTimeout(unlock, 300)
+        return
+      }
+
+      // Échec
+      const data = await res.json().catch(() => ({}))
+      onFailure(data.error || 'Mot de passe incorrect')
+
+    } catch {
+      setError('Erreur réseau. Réessayez.')
+      $btn.disabled = false
+      $btn.textContent = 'Déverrouiller'
+      $input.focus()
+    }
+  }
+
+  function onFailure (msg) {
+    attempts++
+    $input.value = ''
+    $input.classList.remove('shake')
+    void $input.offsetWidth
+    $input.classList.add('shake')
+
+    if (attempts >= MAX_ATTEMPTS) {
+      lockedUntil = Date.now() + LOCKOUT_MS
+      attempts = 0
+      setError('Trop de tentatives. Réessayez dans 60s.')
+    } else {
+      const left = MAX_ATTEMPTS - attempts
+      setError(`${msg}. (${left} essai${left > 1 ? 's' : ''} restant${left > 1 ? 's' : ''})`)
+    }
+
+    $btn.disabled = false
+    $btn.textContent = 'Déverrouiller'
+    $input.focus()
+  }
+
+  function unlock () {
+    $lock.style.display = 'none'
+    $page.style.display = 'block'
+  }
+
+  function setError (msg) {
+    $error.textContent = msg
+  }
+})()
+</script>
 </body>
 </html>
