@@ -1,4 +1,8 @@
 export default defineNuxtConfig({
+  typescript: {
+    strict: true,
+    typeCheck: true
+  },
   ssr: false,
   css: ['~/assets/css/main.css'],
   nitro: {
