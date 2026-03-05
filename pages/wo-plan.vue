@@ -1,0 +1,921 @@
+<template>
+    <div class="page-wrapper">
+        <h1>Work Orders — Bulk Edit</h1>
+        <div class="subtitle">Plan d'implémentation & Flow complet</div>
+
+        <div class="section-label">01 — Architecture fichiers</div>
+        <div class="arch">
+            <div class="arch-col">
+                <div class="arch-col-header">API</div>
+                <div class="arch-file">workOrderApi.ts<div class="role">PATCH /work-orders/bulk-edit/</div>
+                </div>
+            </div>
+            <div class="arch-col">
+                <div class="arch-col-header">Service</div>
+                <div class="arch-file">workOrderService.ts<div class="role">buildPayload, isSelectable,
+                        resolveSharedStatus, partitionResults</div>
+                </div>
+            </div>
+            <div class="arch-col">
+                <div class="arch-col-header">Store</div>
+                <div class="arch-file">useWorkOrderStore.ts<div class="role">selectedIds, draft, lastResults,
+                        submitBulkEdit()</div>
+                </div>
+            </div>
+            <div class="arch-col">
+                <div class="arch-col-header">Composables</div>
+                <div class="arch-file">useWorkOrderBulkConfig.ts<div class="role">Constantes statuts / règles</div>
+                </div>
+                <div class="arch-file">useWorkOrderRules.ts<div class="role">Règles par WO individuel</div>
+                </div>
+                <div class="arch-file">useWorkOrderBulkEdit.ts<div class="role">Orchestration + AG Grid</div>
+                </div>
+            </div>
+            <div class="arch-col">
+                <div class="arch-col-header">Composants</div>
+                <div class="arch-file">WorkOrderGrid.vue<div class="role">AG Grid + sélection</div>
+                </div>
+                <div class="arch-file">WorkOrderBulkEditPanel.vue<div class="role">Panneau édition masse</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-label">02 — Machine à états (statuts sélectionnables)</div>
+        <div style="background:#192232;border:1px solid #2a3a50;border-radius:10px;padding:28px 24px;margin-bottom:48px;">
+            <div class="states">
+                <div class="state-node">
+                    <div class="state-name" style="color:#60a5fa">Requested</div>
+                    <div class="state-badges"><span class="badge badge-green">✓ sélectable</span></div>
+                    <div style="margin-top:8px;font-size:11px;color:#6a8099">Dates ✓ | Statut ✓</div>
+                </div>
+                <div class="state-arrow">
+                    <span class="arrow-label">schedule →</span>
+                    <span class="arrow-line">→</span>
+                    <span class="arrow-back">← unschedule</span>
+                </div>
+                <div class="state-node">
+                    <div class="state-name" style="color:#34d399">Scheduled</div>
+                    <div class="state-badges"><span class="badge badge-green">✓ sélectable</span></div>
+                    <div style="margin-top:8px;font-size:11px;color:#6a8099">Dates ✓ | Statut ✓</div>
+                </div>
+                <div class="state-arrow">
+                    <span class="arrow-label" style="color:#6a8099">…travaux…</span>
+                    <span class="arrow-line" style="color:#6a8099">→</span>
+                </div>
+                <div class="state-node">
+                    <div class="state-name" style="color:#fb923c">TechnicallyCompleted</div>
+                    <div class="state-badges"><span class="badge badge-green">✓ sélectable</span></div>
+                    <div style="margin-top:8px;font-size:11px;color:#6a8099">Dates <strong style="color:#ef4444">✗</strong> | Statut ✓ | Report ✓</div>
+                </div>
+                <div class="state-arrow">
+                    <span class="arrow-label">report →</span>
+                    <span class="arrow-line">→</span>
+                </div>
+                <div class="state-node">
+                    <div class="state-name" style="color:#a78bfa">Reported</div>
+                    <div class="state-badges"><span class="badge badge-grey">— terminal</span></div>
+                </div>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;justify-content:center;">
+                <span style="font-size:11px;color:#6a8099">Bloqués :</span>
+                <span class="badge badge-red">Rejected</span>
+                <span class="badge badge-red">Cancelled</span>
+                <span class="badge badge-red">IntermediateCompleted</span>
+                <span class="badge badge-red">Approved</span>
+                <span class="badge badge-grey">… autres</span>
+            </div>
+        </div>
+
+        <div class="section-label">03 — Flow utilisateur : sélection de lignes</div>
+        <div class="flow-grid">
+            <div class="flow-card">
+                <div class="flow-card-header" style="background:#0f1e30;color:#60a5fa"><span>👆</span> Clic checkbox sur
+                    une ligne</div>
+                <div class="flow-card-body">
+                    <div class="step">
+                        <div class="step-num" style="background:#1e3a5f;color:#60a5fa">1</div>
+                        <div class="step-content">
+                            <div class="step-title">AG Grid déclenche selectionChanged</div>
+                            <div class="step-desc">Le composable reçoit les nœuds via <span
+                                    class="step-code">getSelectedNodes()</span></div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#1e3a5f;color:#60a5fa">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Vérification par <span class="step-code">isSelectable(wo)</span>
+                            </div>
+                            <div class="step-desc">Statut dans BULK_EDITABLE_STATUSES + résultat ≠ Negative</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#1e3a5f;color:#60a5fa">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Désélection silencieuse des invalides</div>
+                            <div class="step-desc"><span class="step-code">setNodesSelected({ newValue: false })</span>
+                                sur les nœuds rejetés</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#1e3a5f;color:#60a5fa">4</div>
+                        <div class="step-content">
+                            <div class="step-title">Store mis à jour</div>
+                            <div class="step-desc"><span class="step-code">store.setSelection(validIds)</span> — sans
+                                toucher au draft</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#1e3a5f;color:#60a5fa">5</div>
+                        <div class="step-content">
+                            <div class="step-title">Computed <span class="step-code">sharedStatus</span> recalculé</div>
+                            <div class="step-desc">Statuts hétérogènes → panneau masqué. Identiques → panneau visible.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flow-card">
+                <div class="flow-card-header" style="background:#0f1e30;color:#f87171"><span>🚫</span> Cas WO Result =
+                    Negative</div>
+                <div class="flow-card-body">
+                    <div class="step">
+                        <div class="step-num" style="background:#450a0a;color:#f87171">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Checkbox visiblement grisée</div>
+                            <div class="step-desc"><span class="step-code">isRowSelectable</span> retourne false → AG
+                                Grid désactive nativement</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#450a0a;color:#f87171">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Ligne colorée (rouge atténué)</div>
+                            <div class="step-desc">Via <span class="step-code">rowClassRules["wo-row--negative"]</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#450a0a;color:#f87171">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Tooltip sur la checkbox</div>
+                            <div class="step-desc">"Résultat négatif — statut non modifiable"</div>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-num" style="background:#450a0a;color:#f87171">4</div>
+                        <div class="step-content">
+                            <div class="step-title">Exception : Report envoyable</div>
+                            <div class="step-desc"><span class="step-code">buildBulkPayload</span> inclut le report.
+                                Statut exclu du payload.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-label">04 — Data flow : édition et persistance du draft</div>
+        <div class="dataflow">
+            <div class="df-node">
+                <div class="df-icon">🖊️</div>
+                <div class="df-name" style="color:#f472b6">BulkEditPanel</div>
+                <div class="df-detail">Modifie date / statut / report → <strong>updateDraft(patch)</strong></div>
+            </div>
+            <div class="df-node">
+                <div class="df-icon">⚡</div>
+                <div class="df-name" style="color:#fb923c">Store.draft</div>
+                <div class="df-detail">Pinia reactive. <strong>Jamais réinitialisé</strong> à la désélection.</div>
+            </div>
+            <div class="df-node">
+                <div class="df-icon">🧮</div>
+                <div class="df-name" style="color:#a78bfa">Composable</div>
+                <div class="df-detail">Calcule canSubmit, validationErrors, règles contextuelles</div>
+            </div>
+            <div class="df-node">
+                <div class="df-icon">📤</div>
+                <div class="df-name" style="color:#34d399">Service</div>
+                <div class="df-detail">buildBulkPayload() : payload final. Exclut statut si Negative.</div>
+            </div>
+            <div class="df-node">
+                <div class="df-icon">🌐</div>
+                <div class="df-name" style="color:#60a5fa">API</div>
+                <div class="df-detail">PATCH /work-orders/bulk-edit/<br />Résultats item par item</div>
+            </div>
+        </div>
+
+        <div class="section-label">05 — Règles par statut commun sélectionné</div>
+        <div class="rules-grid">
+            <div class="rule-card">
+                <div class="rule-card-header" style="color:#60a5fa">Requested</div>
+                <div class="rule-card-body">
+                    <div class="rule-row"><span class="rule-key">Action</span><span class="rule-val"><span
+                                class="badge badge-blue">schedule</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Statut cible</span><span class="rule-val"><span
+                                class="badge badge-green">Scheduled</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled Start</span><span class="rule-val"><span
+                                class="badge badge-green">✓ éditable</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled End</span><span class="rule-val"><span
+                                class="badge badge-green">✓ éditable</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Report</span><span class="rule-val"><span
+                                class="badge badge-grey">— caché</span></span></div>
+                </div>
+            </div>
+            <div class="rule-card">
+                <div class="rule-card-header" style="color:#34d399">Scheduled</div>
+                <div class="rule-card-body">
+                    <div class="rule-row"><span class="rule-key">Action</span><span class="rule-val"><span
+                                class="badge badge-orange">unschedule</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Statut cible</span><span class="rule-val"><span
+                                class="badge badge-blue">Requested</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled Start</span><span class="rule-val"><span
+                                class="badge badge-green">✓ éditable</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled End</span><span class="rule-val"><span
+                                class="badge badge-green">✓ éditable</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Report</span><span class="rule-val"><span
+                                class="badge badge-grey">— caché</span></span></div>
+                </div>
+            </div>
+            <div class="rule-card">
+                <div class="rule-card-header" style="color:#fb923c">TechnicallyCompleted</div>
+                <div class="rule-card-body">
+                    <div class="rule-row"><span class="rule-key">Action</span><span class="rule-val"><span
+                                class="badge badge-purple">report</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Statut cible</span><span class="rule-val"><span
+                                class="badge badge-purple">Reported</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled Start</span><span class="rule-val"><span
+                                class="badge badge-red">✗ masqué</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Scheduled End</span><span class="rule-val"><span
+                                class="badge badge-red">✗ masqué</span></span></div>
+                    <div class="rule-row"><span class="rule-key">Report</span><span class="rule-val"><span
+                                class="badge badge-green">✓ obligatoire</span></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-label">06 — Flow soumission & gestion des erreurs</div>
+        <div class="error-flow">
+            <div style="font-size:13px;font-weight:600;color:#e2ecf6;margin-bottom:4px;">Bouton "Appliquer" cliqué</div>
+            <div style="font-size:12px;color:var(--muted)">Validation synchrone d'abord, puis appel API</div>
+            <div class="error-steps" style="margin-top:16px;">
+                <div class="error-step">
+                    <div class="es-title">① VALIDATION</div>
+                    <div class="es-desc">canSubmit = false si :<br />• validationErrors.length > 0<br />• isSubmitting =
+                        true<br />• showBulkPanel = false</div>
+                </div>
+                <div class="error-step">
+                    <div class="es-title">② BUILD PAYLOAD</div>
+                    <div class="es-desc">service.buildBulkPayload()<br />• Toutes les lignes sélectionnées<br />• Exclut
+                        statut si Negative<br />• Inclut report pour tous</div>
+                </div>
+                <div class="error-step">
+                    <div class="es-title">③ APPEL API</div>
+                    <div class="es-desc">PATCH /bulk-edit/<br />• isSubmitting = true<br />• try/catch réseau<br />•
+                        Erreur → submitError global</div>
+                </div>
+                <div class="error-step">
+                    <div class="es-title">④ RÉPONSE BACK</div>
+                    <div class="es-desc">partitionBulkResults()<br />• succeeded → applyDraftToRows()<br />• failed →
+                        lastResults<br />• submitError = "N WO en erreur"</div>
+                </div>
+                <div class="error-step" style="background:#1a0a0a;border-radius:0 8px 8px 0;">
+                    <div class="es-title" style="color:#f87171;">⑤ AFFICHAGE ERREURS</div>
+                    <div class="es-desc">Pour chaque WO failed :<br />• WO #ID dans une liste<br />• Message d'erreur du
+                        back<br />• Draft conservé<br />• Sélection maintenue</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-label">07 — Plan d'implémentation (ordre recommandé)</div>
+        <div class="impl-grid">
+            <div class="impl-card">
+                <h3 style="color:#60a5fa">Phase 1 — Fondations</h3>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#60a5fa"></div>
+                    <div>
+                        <div class="impl-text">Types & enums <span class="tag">work-order.ts</span></div>
+                        <div class="impl-note">WorkOrder, BulkEditDraft, Payload, ItemResult</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#60a5fa"></div>
+                    <div>
+                        <div class="impl-text">Config règles <span class="tag">useWorkOrderBulkConfig.ts</span></div>
+                        <div class="impl-note">BULK_EDITABLE_STATUSES, WO_BULK_STATUS_RULES</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#60a5fa"></div>
+                    <div>
+                        <div class="impl-text">Couche API <span class="tag">workOrderApi.ts</span></div>
+                        <div class="impl-note">PATCH /work-orders/bulk-edit/</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#60a5fa"></div>
+                    <div>
+                        <div class="impl-text">Service <span class="tag">workOrderService.ts</span></div>
+                        <div class="impl-note">buildPayload, isSelectable, resolveSharedStatus</div>
+                    </div>
+                </div>
+            </div>
+            <div class="impl-card">
+                <h3 style="color:#34d399">Phase 2 — State management</h3>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#34d399"></div>
+                    <div>
+                        <div class="impl-text">Store Pinia <span class="tag">useWorkOrderStore.ts</span></div>
+                        <div class="impl-note">selectedIds, draft, sharedStatus, submitBulkEdit()</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#34d399"></div>
+                    <div>
+                        <div class="impl-text">Composable <span class="tag">useWorkOrderBulkEdit.ts</span></div>
+                        <div class="impl-note">onGridSelectionChanged, validationErrors, canSubmit</div>
+                    </div>
+                </div>
+            </div>
+            <div class="impl-card">
+                <h3 style="color:#fb923c">Phase 3 — UI composants</h3>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#fb923c"></div>
+                    <div>
+                        <div class="impl-text">Grid <span class="tag">WorkOrderGrid.vue</span></div>
+                        <div class="impl-note">isRowSelectable + rowClassRules + tooltips + applyTransaction</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#fb923c"></div>
+                    <div>
+                        <div class="impl-text">Panneau bulk <span class="tag">WorkOrderBulkEditPanel.vue</span></div>
+                        <div class="impl-note">Champs conditionnels + validation + erreurs back</div>
+                    </div>
+                </div>
+            </div>
+            <div class="impl-card">
+                <h3 style="color:#a78bfa">Phase 4 — Edge cases</h3>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#a78bfa"></div>
+                    <div>
+                        <div class="impl-text">Draft persisté à la désélection</div>
+                        <div class="impl-note">setSelection() ne touche pas bulk.draft</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#a78bfa"></div>
+                    <div>
+                        <div class="impl-text">applyTransaction après submit</div>
+                        <div class="impl-note">Évite la perte de sélection AG Grid</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#a78bfa"></div>
+                    <div>
+                        <div class="impl-text">Bannière WO Negative dans le panneau</div>
+                        <div class="impl-note">"Ces N WO ne verront pas leur statut modifié"</div>
+                    </div>
+                </div>
+                <div class="impl-item">
+                    <div class="impl-dot" style="background:#a78bfa"></div>
+                    <div>
+                        <div class="impl-text">Message statuts mixtes</div>
+                        <div class="impl-note">sharedStatus === null → message à la place du panneau</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup lang="ts">
+// Page de documentation WO Bulk Edit protégée par Edge Function
+</script>
+
+<style scoped>
+:root {
+    --bg: #0f1620;
+    --surface: #192232;
+    --elevated: #1e2a3a;
+    --border: #2a3a50;
+    --text: #c8d8e8;
+    --muted: #6a8099;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --purple: #8b5cf6;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+}
+
+.page-wrapper {
+    padding: 40px 32px;
+    background: #0f1620;
+    color: #c8d8e8;
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+}
+
+h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #3b82f6;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    font-size: 22px;
+    font-weight: 600;
+    color: #e2ecf6;
+    margin-bottom: 40px;
+}
+
+.section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: #6a8099;
+    margin-bottom: 12px;
+    padding-left: 2px;
+}
+
+.arch {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: #2a3a50;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 48px;
+}
+
+.arch-col {
+    background: #192232;
+    padding: 20px 16px;
+}
+
+.arch-col-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #2a3a50;
+}
+
+.arch-col:nth-child(1) .arch-col-header {
+    color: #60a5fa;
+}
+
+.arch-col:nth-child(2) .arch-col-header {
+    color: #34d399;
+}
+
+.arch-col:nth-child(3) .arch-col-header {
+    color: #a78bfa;
+}
+
+.arch-col:nth-child(4) .arch-col-header {
+    color: #fb923c;
+}
+
+.arch-col:nth-child(5) .arch-col-header {
+    color: #f472b6;
+}
+
+.arch-file {
+    background: #1e2a3a;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #c8d8e8;
+    border-left: 2px solid transparent;
+}
+
+.arch-col:nth-child(1) .arch-file {
+    border-color: #60a5fa44;
+}
+
+.arch-col:nth-child(2) .arch-file {
+    border-color: #34d39944;
+}
+
+.arch-col:nth-child(3) .arch-file {
+    border-color: #a78bfa44;
+}
+
+.arch-col:nth-child(4) .arch-file {
+    border-color: #fb923c44;
+}
+
+.arch-col:nth-child(5) .arch-file {
+    border-color: #f472b644;
+}
+
+.arch-file .role {
+    font-size: 9px;
+    color: #6a8099;
+    margin-top: 3px;
+}
+
+.flow-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+}
+
+.flow-card {
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.flow-card-header {
+    padding: 14px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #2a3a50;
+}
+
+.flow-card-body {
+    padding: 16px 18px;
+}
+
+.step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: -12px;
+    width: 1px;
+    background: #2a3a50;
+}
+
+.step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.step-content {
+    flex: 1;
+    padding-top: 3px;
+}
+
+.step-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #ddeeff;
+    margin-bottom: 2px;
+}
+
+.step-desc {
+    font-size: 12px;
+    color: #6a8099;
+    line-height: 1.5;
+}
+
+.step-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: #1e2a3a;
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #06b6d4;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+.rules-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 48px;
+}
+
+.rule-card {
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rule-card-header {
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    border-bottom: 1px solid #2a3a50;
+}
+
+.rule-card-body {
+    padding: 14px 16px;
+}
+
+.rule-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #2a3a50;
+    font-size: 12px;
+    gap: 8px;
+}
+
+.rule-row:last-child {
+    border-bottom: none;
+}
+
+.rule-key {
+    color: #6a8099;
+    flex-shrink: 0;
+}
+
+.rule-val {
+    text-align: right;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-blue {
+    background: #1e3a5f;
+    color: #60a5fa;
+}
+
+.badge-green {
+    background: #064e3b;
+    color: #34d399;
+}
+
+.badge-orange {
+    background: #451a03;
+    color: #fb923c;
+}
+
+.badge-red {
+    background: #450a0a;
+    color: #f87171;
+}
+
+.badge-grey {
+    background: #1e2a3a;
+    color: #6a8099;
+}
+
+.badge-purple {
+    background: #2e1065;
+    color: #c4b5fd;
+}
+
+.states {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 48px;
+    flex-wrap: wrap;
+    row-gap: 16px;
+}
+
+.state-node {
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 8px;
+    padding: 14px 18px;
+    text-align: center;
+    min-width: 130px;
+}
+
+.state-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.state-badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.state-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 8px;
+    gap: 2px;
+}
+
+.arrow-label {
+    font-size: 10px;
+    color: #6a8099;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+}
+
+.arrow-line {
+    color: #3b82f6;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.arrow-back {
+    color: #f59e0b;
+    font-size: 14px;
+}
+
+.dataflow {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    gap: 0;
+    margin-bottom: 48px;
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.df-node {
+    padding: 20px 14px;
+    border-right: 1px solid #2a3a50;
+    text-align: center;
+}
+
+.df-node:last-child {
+    border-right: none;
+}
+
+.df-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+
+.df-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.df-detail {
+    font-size: 11px;
+    color: #6a8099;
+    line-height: 1.5;
+}
+
+.error-flow {
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 48px;
+}
+
+.error-steps {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    margin-top: 16px;
+}
+
+.error-step {
+    flex: 1;
+    background: #1e2a3a;
+    padding: 14px 16px;
+    border-right: 1px solid #2a3a50;
+    font-size: 12px;
+}
+
+.error-step:last-child {
+    border-right: none;
+}
+
+.error-step:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.error-step:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.es-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ef4444;
+    margin-bottom: 6px;
+}
+
+.es-desc {
+    color: #6a8099;
+    line-height: 1.5;
+    font-size: 11px;
+}
+
+.impl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.impl-card {
+    background: #192232;
+    border: 1px solid #2a3a50;
+    border-radius: 10px;
+    padding: 18px 20px;
+}
+
+.impl-card h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+}
+
+.impl-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+
+.impl-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+.impl-text {
+    color: #c8d8e8;
+    line-height: 1.5;
+}
+
+.impl-note {
+    font-size: 11px;
+    color: #6a8099;
+    margin-top: 2px;
+}
+
+.tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    background: #1e2a3a;
+    color: #6a8099;
+    border: 1px solid #2a3a50;
+}
+</style>
